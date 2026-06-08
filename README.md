@@ -73,38 +73,76 @@ Open `ally_library_report.html` from the same folder as the script in any modern
 
 ## Where to Find Your Credentials
 
+### Ally credentials
+
 All three Ally credentials come from the same place in Blackboard:
 
-**Administrator Panel → LTI Tool Providers → (Ally entry) → Manage Placements → Edit Placement: Accessibility Report → Tool Provider Information**
+**Administrator Panel → LTI Tool Providers → prod.ally.ac → Manage Placements → Edit Placement: Accessibility Report → Tool Provider Information**
 
-<!-- screenshot: Blackboard LTI Tool Provider Information screen -->
+<!-- screenshot: Blackboard LTI Tool Provider Information screen (with client ID annotated) -->
 
 | Config field | Where it comes from |
 |---|---|
 | `ally_base_url` | The domain in the Tool Provider URL — usually `https://prod.ally.ac` |
-| `ally_client_id` | The number between `/v1/` and `/lti/` in the Tool Provider URL |
+| `ally_client_id` | The number between `/v1/` and `/lti/` in the Tool Provider URL (e.g. `https://prod.ally.ac/api/v1/**1111**/lti/instructor`) |
 | `ally_lti_key` | The **Tool Provider Key** field |
 | `ally_lti_secret` | The **Tool Provider Secret** field |
-| `ally_admin_user_id` | A Blackboard username that has logged into Ally at least once (see note below) |
+| `ally_admin_user_id` | The Blackboard username of the dedicated account created in the setup steps below (see note) |
+
+### Blackboard REST API credentials
+
+The Blackboard setup involves four steps. Do them in order.
+
+#### Step 1 — Register an application at developer.blackboard.com
+
+Go to [https://developer.blackboard.com](https://developer.blackboard.com) and create a new application. After creation you'll be shown an **Application ID**, a **Key**, and a **Secret**.
+
+> ⚠️ Copy the Key and Secret immediately — the Secret is only displayed once.
+
+These become `bb_key` and `bb_secret` in your config file.
+
+#### Step 2 — Create a System Role with the required entitlements
+
+In Blackboard: **Administrator Panel → Users → System Roles → Create Role**
+
+Add the three privileges listed in the [Entitlements](#blackboard-rest-api-entitlements) section below.
+
+#### Step 3 — Create a dedicated user account
+
+**Administrator Panel → Users → Create User**
+
+Assign the System Role created in Step 2. This account's username is also what you'll use for `ally_admin_user_id` (it just needs to have logged into Ally at least once).
+
+Using a dedicated account rather than a personal admin account is strongly recommended.
+
+#### Step 4 — Register the REST Integration in Blackboard
+
+**Administrator Panel → REST API Integrations → Create Integration**
+
+| Field | Value |
+|---|---|
+| Application ID | The Application ID from developer.blackboard.com (Step 1) |
+| Learn User | The user account created in Step 3 |
+| End User Access | Yes |
+| Authorized To Act As User | Yes |
+
+| Config field | Where it comes from |
+|---|---|
 | `bb_base_url` | Your Blackboard instance URL, e.g. `https://blackboard.yourschool.edu` |
-| `bb_key` | Your REST API integration application key |
-| `bb_secret` | Your REST API integration application secret |
-
-The Blackboard REST API credentials come from:
-
-**Administrator Panel → Building Blocks → REST API Integrations**
+| `bb_key` | The **Key** from developer.blackboard.com (Step 1) |
+| `bb_secret` | The **Secret** from developer.blackboard.com (Step 1) |
 
 ---
 
 ## Blackboard REST API Entitlements
 
-The REST API integration account only needs these entitlements:
+The System Role (Step 2 above) only needs these three privileges:
 
-| Entitlement | Purpose |
-|---|---|
-| `system.term.VIEW` | List terms |
-| `course.READ` | List courses by term |
-| `course.ADMIN.VIEW` | *(Optional)* Include unavailable/draft courses |
+| Entitlement | Privilege path in Blackboard | Purpose |
+|---|---|---|
+| `system.term.VIEW` | Administrator Panel (Courses) > Terms | List terms |
+| `system.course.VIEW` | Administrator Panel (Courses) > Courses | List courses by term |
+| `course.unavailable-course.VIEW` | Course/Organization > Access unavailable course | *(Optional)* Include unavailable/draft courses |
 
 No membership, user, or content entitlements are required.
 
