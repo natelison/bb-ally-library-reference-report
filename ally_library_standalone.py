@@ -33,10 +33,13 @@ USAGE
     python ally_library_standalone.py --check          # validate credentials
 
 BLACKBOARD REST API ENTITLEMENTS REQUIRED
-    The REST API Integration only needs two entitlements:
-        system.term.VIEW    — list terms
-        course.READ         — list courses by term
-    Add course.ADMIN.VIEW if you also want unavailable/draft courses included.
+    Create a System Role with these three privileges:
+        system.term.VIEW                 — list terms
+        system.course.VIEW               — list courses by term
+        course.unavailable-course.VIEW   — (optional) include unavailable/draft courses
+    Assign that role to a dedicated user, then register a REST Integration in
+    Blackboard (Admin Panel → REST API Integrations) linked to that user.
+    The Key and Secret come from developer.blackboard.com, not from Blackboard itself.
 
 ABOUT ally_admin_user_id
     This is the Blackboard username placed in the Ally JWT for audit-log purposes.
@@ -141,13 +144,13 @@ _FIELDS = [
      ""),
 
     ("bb_key",
-     "Blackboard REST API application key",
-     "From Administrator Panel > Building Blocks > REST API Integrations",
+     "Blackboard REST API key",
+     "From developer.blackboard.com — shown when you create/view your application",
      ""),
 
     ("bb_secret",
-     "Blackboard REST API application secret",
-     "From the same REST API Integrations page — treat like a password",
+     "Blackboard REST API secret",
+     "From developer.blackboard.com — only shown once at creation, treat like a password",
      ""),
 ]
 
@@ -177,9 +180,14 @@ def run_setup_wizard(config_path: Path) -> dict:
     print("       → Manage Placements → Edit Placement: Accessibility Report")
     print("       → Tool Provider Information section")
     print()
-    print("  2. REST API Integration (for Blackboard credentials):")
-    print("       Administrator Panel → Building Blocks")
-    print("       → REST API Integrations")
+    print("  2. Blackboard REST API (four steps):")
+    print("       a) Register an application at developer.blackboard.com")
+    print("          (Key and Secret are shown here — copy them immediately)")
+    print("       b) Create a System Role with the required entitlements")
+    print("          (Admin Panel → Users → System Roles)")
+    print("       c) Create a dedicated user account with that System Role")
+    print("       d) Register the REST Integration in Blackboard")
+    print("          (Admin Panel → REST API Integrations)")
     print()
     print("Press Enter to accept the default shown in [brackets].")
     print()
