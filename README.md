@@ -75,16 +75,16 @@ Open `ally_library_report.html` from the same folder as the script in any modern
 
 ### Ally credentials
 
-All three Ally credentials come from the same place in Blackboard:
+All four Ally credentials are on a single page in Blackboard:
 
-**Administrator Panel → LTI Tool Providers → prod.ally.ac → Manage Placements → Edit Placement: Accessibility Report → Tool Provider Information**
+**Administrator Panel → Building Blocks → Installed Tools → Ally Integration (click the settings icon)**
 
-<!-- screenshot: Blackboard LTI Tool Provider Information screen (with client ID annotated) -->
+<!-- screenshot: Ally Integration settings page showing Tool Provider Key, Secret, and Client ID -->
 
 | Config field | Where it comes from |
 |---|---|
-| `ally_base_url` | The domain in the Tool Provider URL — usually `https://prod.ally.ac` |
-| `ally_client_id` | The number between `/v1/` and `/lti/` in the Tool Provider URL (e.g. `https://prod.ally.ac/api/v1/**1111**/lti/instructor`) |
+| `ally_base_url` | Almost always `https://prod.ally.ac` (the default — press Enter to accept) |
+| `ally_client_id` | The **Client ID** field under *Tool Provider Custom Parameters* |
 | `ally_lti_key` | The **Tool Provider Key** field |
 | `ally_lti_secret` | The **Tool Provider Secret** field |
 | `ally_admin_user_id` | The Blackboard username of the dedicated account created in the setup steps below (see note) |
@@ -124,7 +124,7 @@ Using a dedicated account rather than a personal admin account is strongly recom
 | Application ID | The Application ID from developer.blackboard.com (Step 1) |
 | Learn User | The user account created in Step 3 |
 | End User Access | Yes |
-| Authorized To Act As User | Yes |
+| Authorized To Act As User | No |
 
 | Config field | Where it comes from |
 |---|---|
