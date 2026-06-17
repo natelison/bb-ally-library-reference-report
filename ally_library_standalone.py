@@ -38,7 +38,7 @@ BLACKBOARD REST API ENTITLEMENTS REQUIRED
         system.course.VIEW               — list courses by term
         course.unavailable-course.VIEW   — (optional) include unavailable/draft courses
     Assign that role to a dedicated user, then register a REST Integration in
-    Blackboard (Admin Panel → REST API Integrations) linked to that user.
+    Blackboard (Admin Panel -> REST API Integrations) linked to that user.
     The Key and Secret come from developer.blackboard.com, not from Blackboard itself.
 
 ABOUT ally_admin_user_id
@@ -68,6 +68,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+# ── UTF-8 stdout ─────────────────────────────────────────────────────────────
+# Python can default to ASCII in venvs and piped contexts even when the
+# terminal supports UTF-8 (common on macOS). Reconfigure before any output.
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 # ── Dependency check ───────────────────────────────────────────────────────────
 
 try:
@@ -96,34 +105,32 @@ DEFAULT_CONFIG  = SCRIPT_DIR / CONFIG_FILENAME
 _FIELDS = [
     # (key, label, hint, default)
     #
-    # ally_base_url / ally_client_id / ally_lti_key / ally_lti_secret all come
-    # from the same place in Blackboard:
+    # All four Ally credentials come from the same place in Blackboard:
     #
-    #   Administrator Panel → LTI Tool Providers → (find the Ally entry)
-    #   → Edit Placement: Accessibility Report → Tool Provider Information
+    #   Administrator Panel -> Building Blocks -> Installed Tools
+    #   -> Ally Integration (click the gear/settings icon)
     #
-    # The Tool Provider URL looks like:
-    #   https://prod.ally.ac/api/v1/1111/lti/instructor
-    #                               ^^^^
-    #                           client ID is here
+    # On that settings page you will see:
+    #   Tool Provider Key        -> ally_lti_key
+    #   Tool Provider Secret     -> ally_lti_secret
+    #   Custom Parameters: Client ID  -> ally_client_id
     #
-    # "Tool Provider Key"    → ally_lti_key
-    # "Tool Provider Secret" → ally_lti_secret
+    # ally_base_url is almost always https://prod.ally.ac (the default).
 
     ("ally_base_url",
      "Ally base URL",
-     "The domain from the Tool Provider URL, e.g. https://prod.ally.ac",
+     "Almost always https://prod.ally.ac -- press Enter to accept the default",
      "https://prod.ally.ac"),
 
     ("ally_client_id",
      "Ally client ID",
-     "The number between /v1/ and /lti/ in the Tool Provider URL\n"
-     "  (e.g. https://prod.ally.ac/api/v1/>>>1111<<</lti/instructor)",
+     "Found in the 'Client ID' field under Tool Provider Custom Parameters\n"
+     "  on the Ally Integration settings page (Building Blocks -> Installed Tools)",
      ""),
 
     ("ally_lti_key",
      "Ally LTI key",
-     "The 'Tool Provider Key' field on the Edit Placement screen in Blackboard",
+     "The 'Tool Provider Key' field on the Ally Integration settings page",
      ""),
 
     ("ally_lti_secret",
@@ -159,7 +166,7 @@ _REQUIRED = [f[0] for f in _FIELDS]
 
 def _prompt(label: str, hint: str, default: str) -> str:
     if hint:
-        print(f"  ℹ  {hint}")
+        print(f"  (i) {hint}")
     suffix = f" [{default}]" if default else ""
     val = input(f"  {label}{suffix}: ").strip()
     return val or default
@@ -168,44 +175,43 @@ def _prompt(label: str, hint: str, default: str) -> str:
 def run_setup_wizard(config_path: Path) -> dict:
     """Interactive first-time setup wizard. Saves config and returns it."""
     print()
-    print("╔═══════════════════════════════════════════════════════╗")
-    print("║   Ally Library Report — First-time Setup Wizard       ║")
-    print("╚═══════════════════════════════════════════════════════╝")
+    print("+" + "=" * 55 + "+")
+    print("|   Ally Library Report -- First-time Setup Wizard      |")
+    print("+" + "=" * 55 + "+")
     print()
     print("You'll need credentials from two places in Blackboard:")
     print()
-    print("  1. Ally LTI placement (for Ally credentials):")
-    print("       Administrator Panel → LTI Tool Providers")
-    print("       → click Edit on the Ally entry")
-    print("       → Manage Placements → Edit Placement: Accessibility Report")
-    print("       → Tool Provider Information section")
+    print("  1. Ally credentials:")
+    print("       Administrator Panel -> Building Blocks -> Installed Tools")
+    print("       -> Ally Integration (click the settings icon)")
+    print("       Key, Secret, and Client ID are all on that one page.")
     print()
     print("  2. Blackboard REST API (four steps):")
     print("       a) Register an application at developer.blackboard.com")
-    print("          (Key and Secret are shown here — copy them immediately)")
+    print("          (Key and Secret are shown here - copy them immediately)")
     print("       b) Create a System Role with the required entitlements")
-    print("          (Admin Panel → Users → System Roles)")
+    print("          (Admin Panel -> Users -> System Roles)")
     print("       c) Create a dedicated user account with that System Role")
     print("       d) Register the REST Integration in Blackboard")
-    print("          (Admin Panel → REST API Integrations)")
+    print("          (Admin Panel -> REST API Integrations)")
     print()
     print("Press Enter to accept the default shown in [brackets].")
     print()
 
     cfg: Dict[str, Any] = {}
 
-    print("── Ally settings ──────────────────────────────────────")
+    print("-- Ally settings " + "-" * 38)
     for key, label, hint, default in _FIELDS[:5]:
         cfg[key] = _prompt(label, hint, default)
         print()
 
-    print("── Blackboard settings ────────────────────────────────")
+    print("-- Blackboard settings " + "-" * 32)
     for key, label, hint, default in _FIELDS[5:]:
         cfg[key] = _prompt(label, hint, default)
         print()
 
-    print("── Default terms (optional) ───────────────────────────")
-    print("  ℹ  Enter term names exactly as they appear in Blackboard,")
+    print("-- Default terms (optional) " + "-" * 27)
+    print("  (i) Enter term names exactly as they appear in Blackboard,")
     print("     separated by commas.  These are used when you don't")
     print("     specify --terms on the command line.")
     raw = input("  Default terms (e.g. Spring 2026, Summer 2026): ").strip()
@@ -216,7 +222,7 @@ def run_setup_wizard(config_path: Path) -> dict:
     if ans not in ("n", "no"):
         config_path.parent.mkdir(parents=True, exist_ok=True)
         config_path.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
-        print(f"\n✓  Config saved to: {config_path}")
+        print(f"\nConfig saved to: {config_path}")
     else:
         print("  Config not saved. Run --setup again at any time.")
 
@@ -431,7 +437,7 @@ def _bb_check_quota(bb: BbCfg, tok: str) -> None:
     Exits cleanly if the quota is already exhausted (HTTP 429).
     Warns but continues if usage is >= 90%.
     """
-    print("  Checking Blackboard API quota …", end="  ", flush=True)
+    print("  Checking Blackboard API quota ...", end="  ", flush=True)
     try:
         r = _session().get(
             f"{bb.base_url}/learn/api/public/v3/courses?limit=1",
@@ -439,7 +445,7 @@ def _bb_check_quota(bb: BbCfg, tok: str) -> None:
             timeout=15,
         )
     except Exception as e:
-        print(f"⚠  probe failed ({e}) — continuing anyway")
+        print(f"[!] probe failed ({e}) - continuing anyway")
         return
 
     if r.status_code == 429:
@@ -447,7 +453,7 @@ def _bb_check_quota(bb: BbCfg, tok: str) -> None:
         retry = f" (retry after {raw}s)" if raw else ""
         limit = r.headers.get("X-Rate-Limit-Limit", "?")
         used  = int(limit) - int(r.headers.get("X-Rate-Limit-Remaining", 0)) if limit != "?" else "?"
-        print(f"✗  RATE LIMIT EXHAUSTED{retry}")
+        print(f"FAIL  RATE LIMIT EXHAUSTED{retry}")
         print(f"     {used} of {limit} calls used this window.")
         print("     Wait for the quota window to reset, then re-run.")
         sys.exit(1)
@@ -458,14 +464,14 @@ def _bb_check_quota(bb: BbCfg, tok: str) -> None:
         if limit and remain:
             used = int(limit) - int(remain)
             pct  = used / int(limit) * 100
-            msg  = f"✓  {remain}/{limit} calls remaining  ({pct:.0f}% used)"
+            msg  = f"OK  {remain}/{limit} calls remaining  ({pct:.0f}% used)"
             if pct >= 90:
-                msg += "  ⚠  WARNING: nearly exhausted"
+                msg += "  [!] WARNING: nearly exhausted"
             print(msg)
         else:
-            print("✓  (no rate-limit headers returned by this instance)")
+            print("OK  (no rate-limit headers returned by this instance)")
     else:
-        print(f"⚠  unexpected HTTP {r.status_code} from quota probe — continuing anyway")
+        print(f"[!] unexpected HTTP {r.status_code} from quota probe - continuing anyway")
 
 
 
@@ -478,7 +484,7 @@ def get_courses_in_terms(bb: BbCfg, bb_tok: str,
     base = f"{bb.base_url}/learn/api/public/v1"
     hdrs = _bb_hdrs(bb_tok)
 
-    # Resolve human-readable term names → Blackboard term IDs
+    # Resolve human-readable term names -> Blackboard term IDs
     terms_resp = _session().get(f"{base}/terms", headers=hdrs, timeout=30)
     if terms_resp.status_code != 200:
         raise RuntimeError(
@@ -495,7 +501,7 @@ def get_courses_in_terms(bb: BbCfg, bb_tok: str,
             term_ids.append(tid)
         else:
             sample = list(name_to_id.keys())[:6]
-            print(f"\n  ⚠  Term not found: '{name}'")
+            print(f"\n  [!] Term not found: '{name}'")
             print(f"     Available terms (sample): {', '.join(sample)}")
 
     if not term_ids:
@@ -535,7 +541,7 @@ def get_courses_in_terms(bb: BbCfg, bb_tok: str,
             "bb_id":      c["id"],
             "course_id":  c.get("courseId", ""),
             "name":       c.get("name", ""),
-            "parent_id":  c.get("parentId"),           # set → cross-list child
+            "parent_id":  c.get("parentId"),           # set -> cross-list child
             "has_children": bool(c.get("hasChildren")),
         }
         for c in all_courses
@@ -978,7 +984,7 @@ body{{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:14
   <div class="empty" id="pe">No matching publications found.</div>
 </div>
 
-<div class="foot">Ally Library Reference Report · ally_library_standalone.py v{VERSION}</div>
+<div class="foot">Ally Library Reference Report - ally_library_standalone.py v{VERSION}</div>
 
 <script>
 const P={payload_json};
@@ -1029,7 +1035,7 @@ function renderPubs(){{
   if(!fs.length){{el.innerHTML="";em.classList.add("on");return;}}
   em.classList.remove("on");
   el.innerHTML=fs.map(p=>{{
-    const m=[p.a,p.p,p.y].filter(Boolean).join(" · ");
+    const m=[p.a,p.p,p.y].filter(Boolean).join(" - ");
     const cs=p.courses.map(c=>`<span class="pub-c" title="${{c.name}}">${{c.id}}</span>`).join("");
     return`<div class="pub-card"><div class="pub-t">${{p.t||"(untitled)"}}</div><div class="pub-m">${{m||"No additional metadata"}}</div><div class="pub-s">${{p.nf}} file(s) across ${{p.nc}} course(s)</div><div class="pub-cs">${{cs}}</div></div>`;
   }}).join("");
@@ -1089,39 +1095,39 @@ def _fmt_now() -> str:
 def _progress(done: int, total: int, label: str) -> None:
     w   = 22
     pct = done / total if total else 0
-    bar = "█" * int(w * pct) + "░" * (w - int(w * pct))
+    bar = "#" * int(w * pct) + "." * (w - int(w * pct))
     print(f"\r  [{bar}] {done}/{total}  {label:<48}", end="", flush=True)
 
 
 def run_check(cfg_raw: dict) -> None:
     """Test all credentials without generating a report."""
     print()
-    print("── Credential Check ──────────────────────────────────")
+    print("-- Credential Check " + "-" * 34)
     ally_cfg, bb_cfg = _cfgs_from_json(cfg_raw)
 
     # 1. Ally JWT minting
-    print("  Minting Ally LTI token …", end="  ", flush=True)
+    print("  Minting Ally LTI token ...", end="  ", flush=True)
     try:
         tok = _mint_ally_token(ally_cfg)
-        print(f"✓  ({len(tok)} chars)")
+        print(f"OK  ({len(tok)} chars)")
     except Exception as e:
-        print(f"✗  FAILED\n     {e}")
+        print(f"FAIL  FAILED\n     {e}")
         return
 
     # 2. Blackboard OAuth token
-    print("  Requesting Blackboard OAuth2 token …", end="  ", flush=True)
+    print("  Requesting Blackboard OAuth2 token ...", end="  ", flush=True)
     try:
         bb_tok = _bb_token(bb_cfg)
-        print(f"✓  ({len(bb_tok)} chars)")
+        print(f"OK  ({len(bb_tok)} chars)")
     except Exception as e:
-        print(f"✗  FAILED\n     {e}")
+        print(f"FAIL  FAILED\n     {e}")
         return
 
     # 3. Blackboard API quota
     _bb_check_quota(bb_cfg, bb_tok)
 
     # 4. Blackboard terms (validates the token actually works)
-    print("  Listing Blackboard terms …", end="  ", flush=True)
+    print("  Listing Blackboard terms ...", end="  ", flush=True)
     try:
         r = _session().get(
             f"{bb_cfg.base_url}/learn/api/public/v1/terms",
@@ -1130,11 +1136,11 @@ def run_check(cfg_raw: dict) -> None:
         result = r.json()
         all_terms = result.get("results", [])
         sample    = [t["name"] for t in all_terms[:5] if t.get("name")]
-        print(f"✓  ({len(all_terms)} terms found)")
+        print(f"OK  ({len(all_terms)} terms found)")
         if sample:
             print(f"     Sample: {', '.join(sample)}")
     except Exception as e:
-        print(f"✗  FAILED\n     {e}")
+        print(f"FAIL  FAILED\n     {e}")
         return
 
     print()
@@ -1152,28 +1158,28 @@ def run(
     exclude_zero_students: bool = False,
     verbose:               bool = False,
 ) -> None:
-    """End-to-end pipeline: fetch data → filter → build HTML → write file."""
+    """End-to-end pipeline: fetch data -> filter -> build HTML -> write file."""
     ally_cfg, bb_cfg = _cfgs_from_json(cfg_raw)
     tok_mgr = _TokenMgr(ally_cfg)
 
     # ── Auth ──────────────────────────────────────────────────────────────────
-    print("\n  Authenticating with Blackboard …", end="  ", flush=True)
+    print("\n  Authenticating with Blackboard ...", end="  ", flush=True)
     try:
         bb_tok = _bb_token(bb_cfg)
-        print("✓")
+        print("OK")
     except RuntimeError as e:
-        print(f"✗\n\n  {e}\n")
+        print(f"FAIL\n\n  {e}\n")
         sys.exit(1)
 
     _bb_check_quota(bb_cfg, bb_tok)
 
     # ── Course discovery ──────────────────────────────────────────────────────
-    print(f"  Discovering courses in: {', '.join(terms)} …", end="  ", flush=True)
+    print(f"  Discovering courses in: {', '.join(terms)} ...", end="  ", flush=True)
     try:
         courses = get_courses_in_terms(bb_cfg, bb_tok, terms)
-        print(f"✓  ({len(courses):,} courses)")
+        print(f"OK  ({len(courses):,} courses)")
     except RuntimeError as e:
-        print(f"✗\n\n  {e}\n")
+        print(f"FAIL\n\n  {e}\n")
         sys.exit(1)
 
     # ── Filters ───────────────────────────────────────────────────────────────
@@ -1186,7 +1192,7 @@ def run(
                   f"({len(courses):,} remain)")
 
     if exclude_zero_students and courses:
-        print(f"  Fetching student counts from Ally ({len(courses):,} courses) …",
+        print(f"  Fetching student counts from Ally ({len(courses):,} courses) ...",
               end="  ", flush=True)
         counts: Dict[str, int] = {}
         def _get_count(c: Dict) -> Tuple[str, int]:
@@ -1196,7 +1202,7 @@ def run(
                 counts[bb_id] = n
         before  = len(courses)
         courses = [c for c in courses if counts.get(c["bb_id"], 0) > 0]
-        print(f"✓  (excluded {before - len(courses):,} zero-student courses, "
+        print(f"OK  (excluded {before - len(courses):,} zero-student courses, "
               f"{len(courses):,} remain)")
 
     if not courses:
@@ -1204,7 +1210,7 @@ def run(
         return
 
     # ── Ally file fetching ────────────────────────────────────────────────────
-    print(f"\n  Fetching Ally file data for {len(courses):,} courses …")
+    print(f"\n  Fetching Ally file data for {len(courses):,} courses ...")
     all_rows: List[Dict] = []
     errors:   List[str]  = []
     total                = len(courses)
@@ -1216,7 +1222,7 @@ def run(
         rows  = _build_report_rows(c, raw, bb_cfg.base_url)
         return c, rows
 
-    _progress(0, total, "starting…")
+    _progress(0, total, "starting...")
 
     with ThreadPoolExecutor(max_workers=6) as pool:
         futures = {pool.submit(_process, c): c for c in courses}
@@ -1230,7 +1236,7 @@ def run(
                 with lock:
                     errors.append(f"{c['course_id']}: {e}")
                 if verbose:
-                    print(f"\n  ⚠  {c['course_id']}: {e}")
+                    print(f"\n  [!] {c['course_id']}: {e}")
             completed += 1
             _progress(completed, total, c["course_id"])
 
@@ -1238,16 +1244,16 @@ def run(
 
     # ── Summary ───────────────────────────────────────────────────────────────
     lib_course_count = len({r["course_id"] for r in all_rows})
-    print(f"\n  ✓  {len(all_rows):,} library files found across "
+    print(f"\n  OK  {len(all_rows):,} library files found across "
           f"{lib_course_count:,} courses")
 
     if errors:
-        print(f"  ⚠  {len(errors)} course(s) had errors")
+        print(f"  [!] {len(errors)} course(s) had errors")
         if not verbose:
             print("     (re-run with --verbose to see details)")
         else:
             for e in errors:
-                print(f"     • {e}")
+                print(f"     - {e}")
 
     if not all_rows:
         print("\n  No library references found in the selected terms.")
@@ -1258,21 +1264,21 @@ def run(
     print(f"     {len(pubs):,} unique publications identified")
 
     # ── Write HTML ────────────────────────────────────────────────────────────
-    print(f"\n  Building HTML report …", end="  ", flush=True)
+    print(f"\n  Building HTML report ...", end="  ", flush=True)
     html = build_html(all_rows, title)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(html, encoding="utf-8", newline="\n")
     size_kb = out_path.stat().st_size // 1024
-    print(f"✓")
+    print(f"OK")
 
     print()
     path_str = str(out_path)
-    meta_str = f"{size_kb} KB  ·  Open in any browser — no server needed."
+    meta_str = f"{size_kb} KB  -  Open in any browser — no server needed."
     w = max(len(path_str), len(meta_str)) + 4
-    print(f"  ┌{'─' * w}┐")
-    print(f"  │  {path_str:<{w - 2}}│")
-    print(f"  │  {meta_str:<{w - 2}}│")
-    print(f"  └{'─' * w}┘")
+    print(f"  +" + "-" * w + "+")
+    print(f"  |  {path_str:<{w - 2}}|")
+    print(f"  |  {meta_str:<{w - 2}}|")
+    print(f"  +" + "-" * w + "+")
     print()
 
 
@@ -1360,10 +1366,10 @@ def main() -> None:
 
     # ── Banner ────────────────────────────────────────────────────────────────
     print()
-    print("═" * 60)
+    print("=" * 60)
     print(f"  Ally Library Reference Report  v{VERSION}")
     print(f"  {_fmt_now()}   Terms: {', '.join(terms)}")
-    print("═" * 60)
+    print("=" * 60)
 
     run(
         cfg_raw               = cfg_raw,
